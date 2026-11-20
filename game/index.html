@@ -1,19 +1,104 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Block Dodger</title>
+<title>SOLMARINA — Open World</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #11141b; }
-  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-  /* Read aloud, never shown: the status line screen readers announce. */
-  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#1a0f2e;font-family:'Segoe UI',Arial,Helvetica,sans-serif;}
+  #app{position:fixed;inset:0;}
+  canvas.game{display:block;width:100%;height:100%;}
+  #hud{position:fixed;inset:0;pointer-events:none;user-select:none;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8);z-index:5;}
+  .panel{background:rgba(8,10,24,.55);border:1px solid rgba(255,255,255,.14);border-radius:10px;backdrop-filter:blur(2px);}
+  #topleft{position:absolute;top:14px;left:14px;padding:10px 14px;min-width:210px;}
+  #stars{font-size:26px;letter-spacing:3px;color:#ffd94d;line-height:1;}
+  #stars .off{color:rgba(255,255,255,.22);}
+  #money{font-size:24px;font-weight:800;color:#7dff9a;margin-top:4px;}
+  #money::before{content:"$ ";}
+  #healthbar{height:12px;background:rgba(0,0,0,.55);border-radius:6px;margin-top:7px;overflow:hidden;border:1px solid rgba(255,255,255,.25);}
+  #healthfill{height:100%;width:100%;background:linear-gradient(90deg,#ff5a4e,#ff9a3d);transition:width .2s;}
+  #clock{font-size:13px;opacity:.9;margin-top:5px;letter-spacing:1px;}
+  #minimapWrap{position:absolute;top:14px;right:14px;padding:6px;}
+  #minimap{display:block;border-radius:6px;}
+  #objective{position:absolute;top:14px;left:50%;transform:translateX(-50%);padding:9px 18px;font-size:15px;font-weight:700;text-align:center;max-width:46vw;}
+  #objective small{display:block;font-weight:400;font-size:12px;opacity:.85;margin-top:2px;}
+  #banner{position:absolute;top:34%;left:50%;transform:translate(-50%,-50%) scale(.9);font-size:44px;font-weight:900;letter-spacing:2px;color:#ffd94d;opacity:0;transition:opacity .3s,transform .3s;text-align:center;}
+  #banner.show{opacity:1;transform:translate(-50%,-50%) scale(1);}
+  #banner small{display:block;font-size:18px;color:#fff;letter-spacing:1px;margin-top:6px;}
+  #speedo{position:absolute;right:16px;bottom:16px;padding:8px 16px;font-size:30px;font-weight:900;text-align:right;}
+  #speedo small{display:block;font-size:11px;font-weight:400;opacity:.8;letter-spacing:2px;}
+  #weapon{position:absolute;left:16px;bottom:16px;padding:9px 14px;font-size:17px;font-weight:700;}
+  #weapon small{font-weight:400;opacity:.85;}
+  #hint{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);font-size:13px;padding:7px 14px;opacity:.95;}
+  #waypoint{position:absolute;left:50%;top:86px;width:0;height:0;margin-left:-14px;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:22px solid #ffd94d;filter:drop-shadow(0 2px 3px rgba(0,0,0,.7));transition:transform .1s linear;}
+  #waypoint .dist{position:absolute;top:24px;left:50%;transform:translateX(-50%);font-size:12px;font-weight:700;white-space:nowrap;}
+  #vignette{position:fixed;inset:0;pointer-events:none;z-index:4;box-shadow:inset 0 0 120px rgba(255,0,0,0);transition:box-shadow .25s;}
+  #vignette.hurt{box-shadow:inset 0 0 140px rgba(255,0,0,.55);}
+  #crosshair{position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;display:none;}
+  #crosshair::before,#crosshair::after{content:"";position:absolute;background:#fff;box-shadow:0 0 3px #000;}
+  #crosshair::before{left:10px;top:0;width:2px;height:22px;}
+  #crosshair::after{top:10px;left:0;height:2px;width:22px;}
+  .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:10;background:radial-gradient(ellipse at center,rgba(20,8,40,.55),rgba(5,2,12,.88));color:#fff;text-align:center;}
+  .overlay h1{font-size:64px;margin:0;letter-spacing:6px;font-weight:900;color:#ffd94d;text-shadow:0 4px 0 #b3541e,0 8px 24px rgba(0,0,0,.8);}
+  .overlay h2{font-size:20px;font-weight:400;margin:10px 0 0;color:#ffe9a8;letter-spacing:2px;}
+  .overlay p{max-width:560px;font-size:15px;line-height:1.6;opacity:.92;}
+  .overlay .btn{pointer-events:auto;cursor:pointer;margin-top:18px;background:#ffd94d;color:#231303;border:0;border-radius:10px;padding:14px 42px;font-size:19px;font-weight:900;letter-spacing:1px;box-shadow:0 6px 0 #b3541e;}
+  .overlay .btn:active{transform:translateY(4px);box-shadow:0 2px 0 #b3541e;}
+  .overlay .keys{margin-top:22px;font-size:13px;line-height:1.9;opacity:.85;background:rgba(0,0,0,.35);padding:12px 22px;border-radius:10px;text-align:left;}
+  .overlay .keys b{color:#ffd94d;}
+  #startScreen .sub{font-size:13px;letter-spacing:4px;opacity:.75;margin-top:14px;}
+  .hidden{display:none !important;}
+  #loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:20;background:#12082a;color:#ffd94d;font-size:20px;letter-spacing:3px;}
 </style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
 </head>
 <body>
-<canvas id="game" aria-label="Block Dodger: move the paddle left and right to dodge falling blocks and catch coins"></canvas>
-<p id="status" role="status" aria-live="polite"></p>
+<div id="app"></div>
+<div id="loading">LOADING SOLMARINA…</div>
+<div id="vignette"></div>
+<div id="hud" class="hidden">
+  <div id="topleft" class="panel">
+    <div id="stars"><span class="off">★★★★★</span></div>
+    <div id="money">250</div>
+    <div id="healthbar"><div id="healthfill"></div></div>
+    <div id="clock">GOLDEN HOUR · 17:40</div>
+  </div>
+  <div id="minimapWrap" class="panel"><canvas id="minimap" width="208" height="208"></canvas></div>
+  <div id="objective" class="panel">Welcome to Solmarina<small>Press ENTER to start the story</small></div>
+  <div id="waypoint" class="hidden"><div class="dist"></div></div>
+  <div id="banner"></div>
+  <div id="speedo" class="panel hidden">0<small>KM/H</small></div>
+  <div id="weapon" class="panel">Fists<small> — press E near a car to steal it</small></div>
+  <div id="hint" class="panel hidden"></div>
+  <div id="crosshair"></div>
+</div>
+<div id="startScreen" class="overlay hidden">
+  <h1>SOLMARINA</h1>
+  <h2>AN OPEN-WORLD CRIME STORY</h2>
+  <p>You are <b>Leo Marín</b>, ex-wheelman, back in Solmarina with a debt to pay and a city to take.
+  Steal cars, outrun the Solmarina PD, run jobs for fixer <b>Mara Solís</b> and settle the score with the
+  <b>Los Tiburones</b> crew — one mission at a time.</p>
+  <button class="btn" id="playBtn">▶ &nbsp;START THE STORY</button>
+  <div class="keys">
+    <b>W A S D</b> move / drive &nbsp;·&nbsp; <b>Mouse drag</b> look &nbsp;·&nbsp; <b>Shift</b> sprint &nbsp;·&nbsp; <b>Space</b> jump / handbrake<br>
+    <b>E</b> enter / exit car &nbsp;·&nbsp; <b>Click</b> shoot &nbsp;·&nbsp; <b>R</b> reload &nbsp;·&nbsp; <b>F</b> punch &nbsp;·&nbsp; <b>P</b> pause &nbsp;·&nbsp; <b>M</b> mute<br>
+    <b>1</b> fists &nbsp;·&nbsp; <b>2</b> pistol &nbsp;·&nbsp; <b>L</b> save game &nbsp;·&nbsp; progress auto-saves after every mission
+  </div>
+  <div class="sub">A COMPLETELY ORIGINAL GAME · NOTHING FROM ANY COMMERCIAL GAME</div>
+</div>
+<div id="pauseScreen" class="overlay hidden">
+  <h1 style="font-size:44px;">PAUSED</h1>
+  <p>Solmarina waits for no one. Well — right now it does.</p>
+  <button class="btn" id="resumeBtn">RESUME</button>
+  <button class="btn" id="restartBtn" style="background:#fff;color:#231303;box-shadow:0 6px 0 #888;">RESTART STORY</button>
+</div>
+<div id="endScreen" class="overlay hidden">
+  <h1 id="endTitle" style="font-size:44px;">BUSTED</h1>
+  <p id="endText"></p>
+  <button class="btn" id="retryBtn">TRY AGAIN</button>
+</div>
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>
